@@ -549,7 +549,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
         '396': {'acodec': 'none', 'vcodec': 'av01.0.05M.08'},
         '397': {'acodec': 'none', 'vcodec': 'av01.0.05M.08'},
     }
-    _SUBTITLE_FORMATS = ('srv1', 'srv2', 'srv3', 'ttml', 'vtt')
+    _SUBTITLE_FORMATS = ('srv1', 'srv2', 'srv3', 'ttml', 'vtt', 'json3')
 
     _GEO_BYPASS = False
 
@@ -1488,7 +1488,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
     def _get_automatic_captions(self, video_id, webpage):
         """We need the webpage for getting the captions url, pass it as an
            argument to speed up the process."""
-        self.to_screen('%s: Looking for automatic captions' % video_id)
+        self.to_screen('%s: Looking for automatic caption' % video_id)
         player_config = self._get_ytplayer_config(video_id, webpage)
         err_msg = 'Couldn\'t find automatic captions for %s' % video_id
         if not player_config:
@@ -1526,6 +1526,8 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                             'ts': timestamp,
                             'kind': caption_kind,
                         })
+                        if ext == 'json3':
+                            params += '&'
                         sub_formats.append({
                             'url': caption_url + '&' + params,
                             'ext': ext,
@@ -1533,16 +1535,23 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                     sub_lang_list[sub_lang] = sub_formats
                 return sub_lang_list
 
+
+            self.to_screen('%s: have captions url' % caption_url)
+
             def make_captions(sub_url, sub_langs):
+                # self.to_screen('make_caps %s, %s' % (sub_url,sub_langs))
                 parsed_sub_url = compat_urllib_parse_urlparse(sub_url)
                 caption_qs = compat_parse_qs(parsed_sub_url.query)
                 captions = {}
                 for sub_lang in sub_langs:
+                    if sub_lang != 'en':
+                        continue
                     sub_formats = []
                     for ext in self._SUBTITLE_FORMATS:
                         caption_qs.update({
                             'tlang': [sub_lang],
                             'fmt': [ext],
+                            'kind': 'asr'
                         })
                         sub_url = compat_urlparse.urlunparse(parsed_sub_url._replace(
                             query=compat_urllib_parse_urlencode(caption_qs, True)))
